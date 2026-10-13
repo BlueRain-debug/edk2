@@ -1,0 +1,18 @@
+## @file
+#  Monitor calls for the single-CPU Windows RT experiment.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+[Defines]
+  INF_VERSION                    = 1.29
+  BASE_NAME                      = WinRtMonitorLib
+  FILE_GUID                      = 07ce26da-39b1-4b13-86b5-6f669d26b794
+  MODULE_TYPE                    = BASE
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = ArmMonitorLib
+
+[Sources]
+  WinRtMonitorLib.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  ArmPkg/ArmPkg.dec

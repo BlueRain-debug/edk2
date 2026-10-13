@@ -1,0 +1,66 @@
+#/** @file
+#
+#  Copyright (c) 2011-2014, ARM Ltd. All rights reserved.<BR>
+#  Copyright (c) 2014, Linaro Ltd. All rights reserved.<BR>
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+#
+#**/
+
+[Defines]
+  INF_VERSION                    = 0x00010005
+  BASE_NAME                      = WinRtMemoryInitPeiLib
+  FILE_GUID                      = 0b3c8d4d-6a66-4ef4-bc04-b8ffba67ed63
+  MODULE_TYPE                    = SEC
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = MemoryInitPeiLib
+
+[Sources]
+  WinRtMemoryInitPeiLib.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  EmbeddedPkg/EmbeddedPkg.dec
+  ArmPkg/ArmPkg.dec
+  ArmPlatformPkg/ArmPlatformPkg.dec
+  ArmVirtPkg/ArmVirtPkg.dec
+  ArmVirtPkg/ArmVirtQemuWinRtPkg.dec
+
+[LibraryClasses]
+  DebugLib
+  HobLib
+  ArmLib
+  ArmMmuLib
+  ArmVirtMemInfoLib
+  CacheMaintenanceLib
+
+[Guids]
+  gArmVirtSystemMemorySizeGuid
+  gEfiMemoryTypeInformationGuid
+
+[FeaturePcd]
+  gEmbeddedTokenSpaceGuid.PcdPrePiProduceMemoryTypeInformationHob
+
+[FixedPcd]
+  gArmVirtWinRtTokenSpaceGuid.PcdWinRtUncachedRam
+  gArmTokenSpaceGuid.PcdFdSize
+
+  gArmPlatformTokenSpaceGuid.PcdSystemMemoryUefiRegionSize
+
+  gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiACPIReclaimMemory
+  gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiACPIMemoryNVS
+  gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiReservedMemoryType
+  gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiRuntimeServicesData
+  gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiRuntimeServicesCode
+  gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiBootServicesCode
+  gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiBootServicesData
+  gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiLoaderCode
+  gEmbeddedTokenSpaceGuid.PcdMemoryTypeEfiLoaderData
+
+[Pcd]
+  gArmTokenSpaceGuid.PcdSystemMemoryBase
+  gArmTokenSpaceGuid.PcdSystemMemorySize
+  gArmTokenSpaceGuid.PcdFdBaseAddress
+
+[Depex]
+  TRUE

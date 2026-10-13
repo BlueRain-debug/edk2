@@ -1,0 +1,110 @@
+name: Build Windows RT ARM firmware
+
+on:
+  push:
+    branches:
+      - edk2-stable202411-winrt
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: winrt-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  firmware:
+    name: ARM / ${{ matrix.target }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [DEBUG, RELEASE]
+    env:
+      BUILD_TARGET: ${{ matrix.target }}
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check out source and submodules
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Install build dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential gcc-arm-none-eabi binutils-arm-none-eabi \
+            acpica-tools nasm uuid-dev python3
+
+      - name: Build WinRT firmware
+        run: |
+          set -euo pipefail
+          export WORKSPACE="$GITHUB_WORKSPACE"
+          export EDK_TOOLS_PATH="$WORKSPACE/BaseTools"
+          export CONF_PATH="$WORKSPACE/Conf"
+          export PYTHONPATH="$EDK_TOOLS_PATH/Source/Python"
+          export PYTHON_COMMAND=python3
+          export GCC5_ARM_PREFIX=/usr/bin/arm-none-eabi-
+          export IASL_PREFIX=/usr/bin/
+          export PATH="$EDK_TOOLS_PATH/BinWrappers/PosixLike:$EDK_TOOLS_PATH/Source/C/bin:$PATH"
+
+          mkdir -p "$CONF_PATH"
+          for config in target tools_def build_rule; do
+            cp "BaseTools/Conf/$config.template" "$CONF_PATH/$config.txt"
+          done
+
+          make -C BaseTools/Source/C -j2 \
+            'CC=gcc -std=gnu11' EXTRA_OPTFLAGS=-Wno-error \
+            GenFfs GenFv GenFw GenSec LzmaCompress TianoCompress VfrCompile \
+            2>&1 | tee build-basetools.log
+
+          python3 BaseTools/Source/Python/build/build.py \
+            -p ArmVirtPkg/ArmVirtQemuWinRt.dsc \
+            -a ARM -b "$BUILD_TARGET" -t GCC5 -n 2 \
+            -D NETWORK_ENABLE=FALSE -D TPM2_ENABLE=FALSE \
+            -D FD_SIZE_IN_MB=3 -D WINRT_SD_IO_ALIGN=0 \
+            -D WINRT_UNCACHED_RAM=TRUE \
+            2>&1 | tee build-winrt.log
+
+      - name: Package firmware
+        run: |
+          set -euo pipefail
+          firmware_dir="Build/ArmVirtQemuWinRt-ARM/${BUILD_TARGET}_GCC5/FV"
+          artifact_dir="dist/winrt-${BUILD_TARGET}"
+          mkdir -p "$artifact_dir"
+          cp "$firmware_dir/QEMU_EFI.fd" "$firmware_dir/QEMU_VARS.fd" "$artifact_dir/"
+          (
+            cd "$artifact_dir"
+            sha256sum QEMU_EFI.fd QEMU_VARS.fd > SHA256SUMS
+          )
+          {
+            git rev-parse HEAD
+            arm-none-eabi-gcc --version
+            python3 --version
+          } > "$artifact_dir/build-info.txt"
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: edk2-winrt-ARM-${{ matrix.target }}
+          path: dist/winrt-${{ matrix.target }}/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: edk2-winrt-ARM-${{ matrix.target }}-logs
+          path: |
+            build-basetools.log
+            build-winrt.log
+          if-no-files-found: ignore
+          retention-days: 14
