@@ -228,6 +228,7 @@ InstallWinRtLegacyTimerTable (
   EFI_ACPI_6_5_GENERIC_TIMER_DESCRIPTION_TABLE   *Gtdt;
   EFI_ACPI_TABLE_PROTOCOL                       *Acpi;
   WINRT_EGIT_TABLE                              Egit;
+  BOOLEAN                                       HasCsrt;
   EFI_STATUS                                    Status;
   UINT64                                        Address;
   UINTN                                         Index;
@@ -249,12 +250,17 @@ InstallWinRtLegacyTimerTable (
     return;
   }
 
-  Gtdt = NULL;
+  Gtdt    = NULL;
+  HasCsrt = FALSE;
   Count = (Xsdt->Length - sizeof (*Xsdt)) / sizeof (Address);
   for (Index = 0; Index < Count; Index++) {
     CopyMem (&Address, (UINT8 *)Xsdt + sizeof (*Xsdt) + Index * sizeof (Address),
              sizeof (Address));
     Header = (EFI_ACPI_DESCRIPTION_HEADER *)(UINTN)Address;
+    if (Header->Signature == SIGNATURE_32 ('C', 'S', 'R', 'T')) {
+      HasCsrt = TRUE;
+    }
+
     if (Header->Signature == SIGNATURE_32 ('E', 'G', 'I', 'T')) {
       DEBUG ((DEBUG_INFO, "WinRT EGIT: existing table retained\n"));
       return;
@@ -267,7 +273,11 @@ InstallWinRtLegacyTimerTable (
   }
 
   if (Gtdt == NULL) {
-    DEBUG ((DEBUG_ERROR, "WinRT EGIT: GTDT unavailable\n"));
+    if (HasCsrt) {
+      DEBUG ((DEBUG_INFO, "WinRT EGIT: using the CSRT platform timer\n"));
+    } else {
+      DEBUG ((DEBUG_ERROR, "WinRT EGIT: GTDT unavailable\n"));
+    }
     return;
   }
 

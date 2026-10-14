@@ -71,6 +71,7 @@ READ_LOCK_STATUS   = TRUE
   INF MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
   INF MdeModulePkg/Universal/SerialDxe/SerialDxe.inf
 
+  INF ArmVirtPkg/WinRtSmpDxe/WinRtSmpDxe.inf
   INF ArmPkg/Drivers/ArmGic/ArmGicDxe.inf
   INF ArmPkg/Drivers/TimerDxe/TimerDxe.inf
   INF OvmfPkg/VirtNorFlashDxe/VirtNorFlashDxe.inf

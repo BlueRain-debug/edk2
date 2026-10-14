@@ -43,6 +43,7 @@
 
 [FixedPcd]
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtUncachedRam
+  gArmVirtWinRtTokenSpaceGuid.PcdWinRtSecondaryReleaseBase
   gArmTokenSpaceGuid.PcdFdSize
 
   gArmPlatformTokenSpaceGuid.PcdSystemMemoryUefiRegionSize

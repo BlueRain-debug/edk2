@@ -1,0 +1,23 @@
+## @file
+#  Stackless secondary CPU entry for the WinRT ARM SEC module.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+[Defines]
+  INF_VERSION = 1.29
+  BASE_NAME = WinRtSecPlatformLib
+  FILE_GUID = 25d88fad-bca7-4ac2-b778-ff1df409287a
+  MODULE_TYPE = BASE
+  VERSION_STRING = 1.0
+  LIBRARY_CLASS = ArmPlatformLib|SEC
+[Sources]
+  WinRtSecPlatformLib.c
+[Sources.ARM]
+  Arm/SecondaryEntry.S
+[Packages]
+  MdePkg/MdePkg.dec
+  ArmPkg/ArmPkg.dec
+  ArmPlatformPkg/ArmPlatformPkg.dec
+  ArmVirtPkg/ArmVirtPkg.dec
+  ArmVirtPkg/ArmVirtQemuWinRtPkg.dec
+[FixedPcd]
+  gArmVirtWinRtTokenSpaceGuid.PcdWinRtSecondaryReleaseBase

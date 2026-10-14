@@ -107,6 +107,10 @@ MemoryPeim (
       );
   }
 
+  // Keep the SEC secondary-release words out of the PEI/DXE page allocator.
+  BuildMemoryAllocationHob (FixedPcdGet32 (PcdWinRtSecondaryReleaseBase),
+                            EFI_PAGE_SIZE, EfiReservedMemoryType);
+
   // Build Memory Allocation Hob
   InitMmu ();
 

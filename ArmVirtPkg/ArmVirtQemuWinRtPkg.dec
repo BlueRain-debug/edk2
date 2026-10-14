@@ -48,3 +48,6 @@
 
   # Publish the early Windows RT timer description alongside GTDT.
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtLegacyEgit|TRUE|BOOLEAN|0x00000007
+
+  # Reserved early-release page shared with the stackless SEC AP wait loop.
+  gArmVirtWinRtTokenSpaceGuid.PcdWinRtSecondaryReleaseBase|0x40060000|UINT32|0x00000008

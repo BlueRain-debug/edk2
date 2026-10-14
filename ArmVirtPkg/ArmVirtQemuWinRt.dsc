@@ -144,6 +144,7 @@
 ################################################################################
 
 [PcdsFeatureFlag.common]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdInstallAcpiSdtProtocol|TRUE
   gUefiOvmfPkgTokenSpaceGuid.PcdQemuBootOrderPciTranslation|TRUE
   gUefiOvmfPkgTokenSpaceGuid.PcdQemuBootOrderMmioTranslation|TRUE
 
@@ -157,7 +158,8 @@
   gArmVirtTokenSpaceGuid.PcdTpm2SupportEnabled|$(TPM2_ENABLE)
 
 [PcdsFixedAtBuild.common]
-  # QEMU disables PSCI when booting this single-CPU EL3 firmware.
+  # AArch32 WinRT uses the ACPI parking protocol instead of PSCI.
+  gArmVirtWinRtTokenSpaceGuid.PcdWinRtSecondaryReleaseBase|0x40060000
   gArmVirtWinRtTokenSpaceGuid.PcdPlatformEhciBase|0x090e0000
   gArmVirtWinRtTokenSpaceGuid.PcdPlatformEhciSize|0x00010000
   gArmVirtWinRtTokenSpaceGuid.PcdPlatformSdHciBase|0x090f0000
@@ -354,7 +356,10 @@
   #
   # PEI Phase modules
   #
-  ArmPlatformPkg/Sec/Sec.inf
+  ArmPlatformPkg/Sec/Sec.inf {
+    <LibraryClasses>
+      ArmPlatformLib|ArmVirtPkg/Library/WinRtSecPlatformLib/WinRtSecPlatformLib.inf
+  }
   MdeModulePkg/Core/Pei/PeiMain.inf
   ArmPlatformPkg/PlatformPei/PlatformPeim.inf
   ArmVirtPkg/MemoryInitPei/MemoryInitPeim.inf {
@@ -402,6 +407,7 @@
   #
   # Architectural Protocols
   #
+  ArmVirtPkg/WinRtSmpDxe/WinRtSmpDxe.inf
   ArmPkg/Drivers/CpuDxe/CpuDxe.inf
   MdeModulePkg/Core/RuntimeDxe/RuntimeDxe.inf
   MdeModulePkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf {

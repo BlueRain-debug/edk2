@@ -1,0 +1,40 @@
+## @file
+#  Windows RT AArch32 ACPI multiprocessor parking protocol.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+[Defines]
+  INF_VERSION = 1.29
+  BASE_NAME = WinRtSmpDxe
+  FILE_GUID = 2e7cfb2e-d9c6-422d-b680-2f80abe6687c
+  MODULE_TYPE = DXE_DRIVER
+  VERSION_STRING = 1.0
+  ENTRY_POINT = WinRtSmpEntryPoint
+[Sources]
+  WinRtSmpDxe.c
+[Sources.ARM]
+  Arm/Parking.S
+[Packages]
+  MdePkg/MdePkg.dec
+  ArmPkg/ArmPkg.dec
+  ArmVirtPkg/ArmVirtPkg.dec
+  ArmVirtPkg/ArmVirtQemuWinRtPkg.dec
+[LibraryClasses]
+  UefiDriverEntryPoint
+  UefiBootServicesTableLib
+  UefiLib
+  BaseLib
+  BaseMemoryLib
+  MemoryAllocationLib
+  CacheMaintenanceLib
+  ArmLib
+  ArmGicLib
+  DebugLib
+  TimerLib
+  PcdLib
+[Protocols]
+  gEfiAcpiTableProtocolGuid
+  gEfiAcpiSdtProtocolGuid
+[FixedPcd]
+  gArmVirtWinRtTokenSpaceGuid.PcdWinRtSecondaryReleaseBase
+[Depex]
+  gEfiAcpiTableProtocolGuid AND gEfiAcpiSdtProtocolGuid
