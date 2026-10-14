@@ -29,6 +29,7 @@
   #
   DEFINE WINRT_SD_IO_ALIGN       = 0
   DEFINE WINRT_UNCACHED_RAM      = TRUE
+  DEFINE WINRT_LEGACY_EGIT       = TRUE
   DEFINE TTY_TERMINAL            = FALSE
   DEFINE SECURE_BOOT_ENABLE      = FALSE
   DEFINE TPM2_ENABLE             = FALSE
@@ -163,6 +164,7 @@
   gArmVirtWinRtTokenSpaceGuid.PcdPlatformSdHciSize|0x00010000
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtSdIoAlign|$(WINRT_SD_IO_ALIGN)
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtUncachedRam|$(WINRT_UNCACHED_RAM)
+  gArmVirtWinRtTokenSpaceGuid.PcdWinRtLegacyEgit|$(WINRT_LEGACY_EGIT)
 
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFdBaseAddress|0x00000000
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFirmwareFdSize|$(FD_SIZE)
@@ -296,8 +298,8 @@
   # Set video resolution for boot options and for text setup.
   # PlatformDxe can set the former at runtime.
   #
-  gEfiMdeModulePkgTokenSpaceGuid.PcdVideoHorizontalResolution|1280
-  gEfiMdeModulePkgTokenSpaceGuid.PcdVideoVerticalResolution|800
+  gEfiMdeModulePkgTokenSpaceGuid.PcdVideoHorizontalResolution|1024
+  gEfiMdeModulePkgTokenSpaceGuid.PcdVideoVerticalResolution|768
   gEfiMdeModulePkgTokenSpaceGuid.PcdSetupVideoHorizontalResolution|640
   gEfiMdeModulePkgTokenSpaceGuid.PcdSetupVideoVerticalResolution|480
   gEfiMdeModulePkgTokenSpaceGuid.PcdConOutRow|0

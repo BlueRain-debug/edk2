@@ -39,6 +39,7 @@
   UefiDriverEntryPoint
 
 [Protocols]
+  gEfiAcpiTableProtocolGuid
   gEfiBlockIoProtocolGuid
   gEfiBlockIo2ProtocolGuid
   gEfiDiskIoProtocolGuid
@@ -56,5 +57,9 @@
   TRUE
 
 
+[FixedPcd]
+  gArmVirtWinRtTokenSpaceGuid.PcdWinRtLegacyEgit
+
 [Guids]
+  gEfiAcpi20TableGuid
   gEdkiiPlatformHasAcpiGuid

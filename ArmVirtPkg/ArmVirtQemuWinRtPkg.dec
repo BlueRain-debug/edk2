@@ -45,3 +45,6 @@
 
   # TCG compatibility for early Windows RT uncached page-table allocation.
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtUncachedRam|TRUE|BOOLEAN|0x00000006
+
+  # Publish the early Windows RT timer description alongside GTDT.
+  gArmVirtWinRtTokenSpaceGuid.PcdWinRtLegacyEgit|TRUE|BOOLEAN|0x00000007
