@@ -10,12 +10,57 @@
 #include <PiPei.h>
 
 #include <Library/ArmMmuLib.h>
+#include <Library/BaseMemoryLib.h>
+#include <libfdt.h>
 #include <Library/ArmVirtMemInfoLib.h>
 #include <Library/DebugLib.h>
 #include <Library/HobLib.h>
 #include <Library/MemoryAllocationLib.h>
 #include <Library/PcdLib.h>
 #include <Library/CacheMaintenanceLib.h>
+
+STATIC CONST EFI_PHYSICAL_ADDRESS mTegraPages[] = {
+  0x60005000, 0x7000E000
+};
+
+STATIC
+BOOLEAN
+WinRtHasTegraTimer (
+  VOID
+  )
+{
+  CONST VOID  *Fdt;
+
+  Fdt = (VOID *)(UINTN)PcdGet64 (PcdDeviceTreeInitialBaseAddress);
+  return (fdt_check_header (Fdt) == 0) &&
+         (fdt_getprop (Fdt, 0, "qemu,winrt-tegra-timer", NULL) != NULL);
+}
+
+STATIC
+VOID
+BuildWinRtRamHobs (
+  IN UINT64                       Base,
+  IN UINT64                       Size,
+  IN EFI_RESOURCE_ATTRIBUTE_TYPE  Attributes
+  )
+{
+  UINT64  LowSize;
+
+  if (Size == 0) {
+    return;
+  }
+
+  if ((Base <= MAX_ALLOC_ADDRESS) && (Base + Size - 1 > MAX_ALLOC_ADDRESS)) {
+    LowSize = (UINT64)MAX_ALLOC_ADDRESS - Base + 1;
+    BuildResourceDescriptorHob (EFI_RESOURCE_SYSTEM_MEMORY, Attributes,
+                                Base, LowSize);
+    Base += LowSize;
+    Size -= LowSize;
+  }
+
+  BuildResourceDescriptorHob (EFI_RESOURCE_SYSTEM_MEMORY, Attributes,
+                              Base, Size);
+}
 
 VOID
 BuildMemoryTypeInformationHob (
@@ -31,9 +76,36 @@ InitMmu (
   VOID                          *TranslationTableBase;
   UINTN                         TranslationTableSize;
   RETURN_STATUS                 Status;
+  ARM_MEMORY_REGION_DESCRIPTOR  *TegraMemoryTable;
+  UINTN                         Count;
+  UINTN                         Index;
 
   // Get Virtual Memory Map from the Platform Library
   ArmVirtGetMemoryMap (&MemoryTable);
+
+  if (WinRtHasTegraTimer ()) {
+    for (Count = 0; MemoryTable[Count].Length != 0; Count++) {
+    }
+
+    TegraMemoryTable = AllocateZeroPool (
+                         (Count + ARRAY_SIZE (mTegraPages) + 1) *
+                         sizeof (*MemoryTable)
+                         );
+    ASSERT (TegraMemoryTable != NULL);
+    if (TegraMemoryTable == NULL) {
+      return;
+    }
+
+    CopyMem (TegraMemoryTable, MemoryTable, Count * sizeof (*MemoryTable));
+    for (Index = 0; Index < ARRAY_SIZE (mTegraPages); Index++) {
+      TegraMemoryTable[Count + Index].PhysicalBase = mTegraPages[Index];
+      TegraMemoryTable[Count + Index].VirtualBase  = mTegraPages[Index];
+      TegraMemoryTable[Count + Index].Length       = EFI_PAGE_SIZE;
+      TegraMemoryTable[Count + Index].Attributes   = ARM_MEMORY_REGION_ATTRIBUTE_DEVICE;
+    }
+
+    MemoryTable = TegraMemoryTable;
+  }
 
   // Note: Because we called PeiServicesInstallPeiMemory() before to call InitMmu() the MMU Page Table resides in
   //      DRAM (even at the top of DRAM as it is the first permanent memory allocation)
@@ -54,6 +126,8 @@ MemoryPeim (
   UINT64                       SystemMemoryTop;
   UINT64                       SystemMemorySize;
   VOID                         *Hob;
+  UINT64                       NextBase;
+  UINTN                        Index;
 
   // Ensure PcdSystemMemorySize has been set
   ASSERT (PcdGet64 (PcdSystemMemorySize) != 0);
@@ -85,27 +159,31 @@ MemoryPeim (
 
   SystemMemoryTop = PcdGet64 (PcdSystemMemoryBase) + SystemMemorySize;
 
-  if (SystemMemoryTop - 1 > MAX_ALLOC_ADDRESS) {
-    BuildResourceDescriptorHob (
-      EFI_RESOURCE_SYSTEM_MEMORY,
-      ResourceAttributes,
-      PcdGet64 (PcdSystemMemoryBase),
-      (UINT64)MAX_ALLOC_ADDRESS - PcdGet64 (PcdSystemMemoryBase) + 1
-      );
-    BuildResourceDescriptorHob (
-      EFI_RESOURCE_SYSTEM_MEMORY,
-      ResourceAttributes,
-      (UINT64)MAX_ALLOC_ADDRESS + 1,
-      SystemMemoryTop - MAX_ALLOC_ADDRESS - 1
-      );
-  } else {
-    BuildResourceDescriptorHob (
-      EFI_RESOURCE_SYSTEM_MEMORY,
-      ResourceAttributes,
-      PcdGet64 (PcdSystemMemoryBase),
-      SystemMemorySize
-      );
+  NextBase = PcdGet64 (PcdSystemMemoryBase);
+  if (WinRtHasTegraTimer ()) {
+    for (Index = 0; Index < ARRAY_SIZE (mTegraPages); Index++) {
+      // These fixed HAL addresses overlap virt RAM when more than 512 MB
+      // is configured. Exclude them before PEI/DXE can allocate the pages.
+      if ((mTegraPages[Index] >= NextBase) &&
+          (mTegraPages[Index] < SystemMemoryTop)) {
+        BuildWinRtRamHobs (NextBase, mTegraPages[Index] - NextBase,
+                           ResourceAttributes);
+        NextBase = mTegraPages[Index] + EFI_PAGE_SIZE;
+      }
+
+      BuildResourceDescriptorHob (
+        EFI_RESOURCE_MEMORY_MAPPED_IO,
+        EFI_RESOURCE_ATTRIBUTE_PRESENT | EFI_RESOURCE_ATTRIBUTE_INITIALIZED |
+        EFI_RESOURCE_ATTRIBUTE_UNCACHEABLE,
+        mTegraPages[Index],
+        EFI_PAGE_SIZE
+        );
+      DEBUG ((DEBUG_INFO, "WinRT Tegra: reserved MMIO page at 0x%lx\n",
+              mTegraPages[Index]));
+    }
   }
+
+  BuildWinRtRamHobs (NextBase, SystemMemoryTop - NextBase, ResourceAttributes);
 
   // Keep the SEC secondary-release words out of the PEI/DXE page allocator.
   BuildMemoryAllocationHob (FixedPcdGet32 (PcdWinRtSecondaryReleaseBase),

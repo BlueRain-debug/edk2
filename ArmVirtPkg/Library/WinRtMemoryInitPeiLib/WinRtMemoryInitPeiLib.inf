@@ -19,6 +19,7 @@
 
 [Packages]
   MdePkg/MdePkg.dec
+  OvmfPkg/OvmfPkg.dec
   MdeModulePkg/MdeModulePkg.dec
   EmbeddedPkg/EmbeddedPkg.dec
   ArmPkg/ArmPkg.dec
@@ -27,6 +28,8 @@
   ArmVirtPkg/ArmVirtQemuWinRtPkg.dec
 
 [LibraryClasses]
+  BaseMemoryLib
+  FdtLib
   DebugLib
   HobLib
   ArmLib
@@ -42,6 +45,7 @@
   gEmbeddedTokenSpaceGuid.PcdPrePiProduceMemoryTypeInformationHob
 
 [FixedPcd]
+  gUefiOvmfPkgTokenSpaceGuid.PcdDeviceTreeInitialBaseAddress
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtUncachedRam
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtSecondaryReleaseBase
   gArmTokenSpaceGuid.PcdFdSize
