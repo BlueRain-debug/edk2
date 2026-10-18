@@ -30,6 +30,7 @@
   DEFINE WINRT_SD_IO_ALIGN       = 0
   DEFINE WINRT_UNCACHED_RAM      = TRUE
   DEFINE WINRT_LEGACY_EGIT       = TRUE
+  DEFINE WINRT_PM_PROFILE        = 0
   DEFINE TTY_TERMINAL            = FALSE
   DEFINE SECURE_BOOT_ENABLE      = FALSE
   DEFINE TPM2_ENABLE             = FALSE
@@ -167,14 +168,16 @@
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtSdIoAlign|$(WINRT_SD_IO_ALIGN)
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtUncachedRam|$(WINRT_UNCACHED_RAM)
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtLegacyEgit|$(WINRT_LEGACY_EGIT)
+  gArmVirtWinRtTokenSpaceGuid.PcdWinRtPreferredPmProfile|$(WINRT_PM_PROFILE)
 
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFdBaseAddress|0x00000000
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFirmwareFdSize|$(FD_SIZE)
 
   gArmPlatformTokenSpaceGuid.PcdCPUCoresStackBase|0x4007c000
   gArmPlatformTokenSpaceGuid.PcdCPUCorePrimaryStackSize|0x4000
-  gEfiMdeModulePkgTokenSpaceGuid.PcdMaxVariableSize|0x2000
-  gEfiMdeModulePkgTokenSpaceGuid.PcdMaxAuthVariableSize|0x2800
+  # Mobile boot policy variables can exceed 16 KiB, before authentication data.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdMaxVariableSize|0x8000
+  gEfiMdeModulePkgTokenSpaceGuid.PcdMaxAuthVariableSize|0xA000
 !if $(NETWORK_TLS_ENABLE) == TRUE
   #
   # The cumulative and individual VOLATILE variable size limits should be set
@@ -436,7 +439,10 @@
       NULL|EmbeddedPkg/Library/NvVarStoreFormattedLib/NvVarStoreFormattedLib.inf
   }
   MdeModulePkg/Universal/MonotonicCounterRuntimeDxe/MonotonicCounterRuntimeDxe.inf
-  MdeModulePkg/Universal/ResetSystemRuntimeDxe/ResetSystemRuntimeDxe.inf
+  MdeModulePkg/Universal/ResetSystemRuntimeDxe/ResetSystemRuntimeDxe.inf {
+    <LibraryClasses>
+      ResetSystemLib|ArmVirtPkg/Library/WinRtResetSystemLib/WinRtResetSystemLib.inf
+  }
   EmbeddedPkg/RealTimeClockRuntimeDxe/RealTimeClockRuntimeDxe.inf {
     <LibraryClasses>
       NULL|ArmVirtPkg/Library/ArmVirtPL031FdtClientLib/ArmVirtPL031FdtClientLib.inf

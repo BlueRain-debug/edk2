@@ -18,6 +18,8 @@
 #include <Protocol/PciIo.h>
 #include <Protocol/DriverSupportedEfiVersion.h>
 #include <Protocol/DevicePath.h>
+#include <Protocol/EdidActive.h>
+#include <Protocol/EdidDiscovered.h>
 
 #include <Library/DebugLib.h>
 #include <Library/UefiDriverEntryPoint.h>
@@ -116,7 +118,9 @@ typedef struct {
   UINTN                           FrameBufferBltConfigureSize;
   UINT8                           FrameBufferVramBarIndex;
 
-  UINT8                           Edid[128];
+  UINT8                           Edid[384];
+  EFI_EDID_DISCOVERED_PROTOCOL     EdidDiscovered;
+  EFI_EDID_ACTIVE_PROTOCOL         EdidActive;
 } QEMU_VIDEO_PRIVATE_DATA;
 
 ///

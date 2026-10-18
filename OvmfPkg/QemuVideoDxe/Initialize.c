@@ -8,6 +8,7 @@
 **/
 
 #include "Qemu.h"
+#include <Library/BaseLib.h>
 
 ///
 /// Generic Attribute Controller Register Settings
@@ -295,6 +296,9 @@ QemuVideoBochsEdid (
   EFI_STATUS  Status;
   UINT32      X;
   UINT32      Y;
+  UINTN       EdidSize;
+  UINTN       Block;
+  STATIC CONST UINT8  EdidHeader[] = { 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00 };
 
   if (Private->Variant != QEMU_VIDEO_BOCHS_MMIO) {
     return;
@@ -317,9 +321,7 @@ QemuVideoBochsEdid (
     return;
   }
 
-  if ((Private->Edid[0] != 0x00) ||
-      (Private->Edid[1] != 0xff))
-  {
+  if (CompareMem (Private->Edid, EdidHeader, sizeof (EdidHeader)) != 0) {
     DEBUG ((
       DEBUG_INFO,
       "%a: magic check failed\n",
@@ -327,6 +329,23 @@ QemuVideoBochsEdid (
       ));
     return;
   }
+
+  EdidSize = ((UINTN)Private->Edid[126] + 1) * 128;
+  if (EdidSize > sizeof (Private->Edid)) {
+    return;
+  }
+
+  for (Block = 0; Block < EdidSize; Block += 128) {
+    if (CalculateSum8 (&Private->Edid[Block], 128) != 0) {
+      DEBUG ((DEBUG_WARN, "%a: EDID checksum invalid\n", __func__));
+      return;
+    }
+  }
+
+  Private->EdidDiscovered.SizeOfEdid = (UINT32)EdidSize;
+  Private->EdidDiscovered.Edid       = Private->Edid;
+  Private->EdidActive.SizeOfEdid     = (UINT32)EdidSize;
+  Private->EdidActive.Edid           = Private->Edid;
 
   DEBUG ((
     DEBUG_INFO,
@@ -373,7 +392,7 @@ QemuVideoBochsEdid (
     ASSERT_RETURN_ERROR (Status);
   }
 
-  // TODO: register edid as gEfiEdidDiscoveredProtocolGuid ?
+  // The driver publishes this EDID on the GOP child handle for OS loaders.
 }
 
 EFI_STATUS

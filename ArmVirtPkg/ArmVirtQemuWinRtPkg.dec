@@ -51,3 +51,6 @@
 
   # Reserved early-release page shared with the stackless SEC AP wait loop.
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtSecondaryReleaseBase|0x40060000|UINT32|0x00000008
+
+  # Optional FADT platform role; zero retains the machine's ACPI profile.
+  gArmVirtWinRtTokenSpaceGuid.PcdWinRtPreferredPmProfile|0|UINT8|0x00000009

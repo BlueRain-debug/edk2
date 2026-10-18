@@ -1,0 +1,39 @@
+## @file
+#  Runtime reset and shutdown for the QEMU Windows RT platform.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 1.29
+  BASE_NAME                      = WinRtResetSystemLib
+  FILE_GUID                      = 302a0719-b424-49da-9f48-d0f9ab07a424
+  MODULE_TYPE                    = DXE_RUNTIME_DRIVER
+  VERSION_STRING                 = 1.0
+  LIBRARY_CLASS                  = ResetSystemLib|DXE_RUNTIME_DRIVER
+  CONSTRUCTOR                    = WinRtResetSystemLibConstructor
+
+[Sources]
+  WinRtResetSystemLib.c
+
+[Packages]
+  EmbeddedPkg/EmbeddedPkg.dec
+  MdeModulePkg/MdeModulePkg.dec
+  MdePkg/MdePkg.dec
+
+[LibraryClasses]
+  BaseLib
+  DebugLib
+  DxeServicesTableLib
+  IoLib
+  UefiBootServicesTableLib
+  UefiRuntimeLib
+
+[Guids]
+  gEfiEventVirtualAddressChangeGuid
+
+[Protocols]
+  gFdtClientProtocolGuid
+  gEfiCpuArchProtocolGuid
+
+[Depex]
+  gFdtClientProtocolGuid AND gEfiCpuArchProtocolGuid

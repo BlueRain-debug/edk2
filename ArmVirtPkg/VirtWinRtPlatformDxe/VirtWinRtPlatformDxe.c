@@ -305,6 +305,68 @@ InstallWinRtLegacyTimerTable (
           Egit.VirtualTimerGsiv, Egit.VirtualTimerFlags, Status));
 }
 
+STATIC
+VOID
+EFIAPI
+SetWinRtPreferredPmProfile (
+  IN EFI_EVENT  Event,
+  IN VOID       *Context
+  )
+{
+  EFI_ACPI_2_0_ROOT_SYSTEM_DESCRIPTION_POINTER  *Rsdp;
+  EFI_ACPI_DESCRIPTION_HEADER                 *Xsdt;
+  EFI_ACPI_DESCRIPTION_HEADER                 *Header;
+  EFI_ACPI_6_5_FIXED_ACPI_DESCRIPTION_TABLE    *Fadt;
+  EFI_STATUS                                  Status;
+  UINT64                                      Address;
+  UINTN                                       Index;
+  UINTN                                       Count;
+  UINT8                                       Profile;
+
+  gBS->CloseEvent (Event);
+  Profile = FixedPcdGet8 (PcdWinRtPreferredPmProfile);
+  if ((Profile == 0) || (Profile > EFI_ACPI_6_5_PM_PROFILE_TABLET)) {
+    return;
+  }
+
+  Status = EfiGetSystemConfigurationTable (&gEfiAcpi20TableGuid, (VOID **)&Rsdp);
+  if (EFI_ERROR (Status) || (Rsdp->Revision < 2) || (Rsdp->XsdtAddress == 0)) {
+    DEBUG ((DEBUG_ERROR, "WinRT PM profile: ACPI 2.0 root unavailable\n"));
+    return;
+  }
+
+  Xsdt = (EFI_ACPI_DESCRIPTION_HEADER *)(UINTN)Rsdp->XsdtAddress;
+  if ((Xsdt->Signature != SIGNATURE_32 ('X', 'S', 'D', 'T')) ||
+      (Xsdt->Length < sizeof (*Xsdt)) ||
+      (((Xsdt->Length - sizeof (*Xsdt)) % sizeof (Address)) != 0)) {
+    DEBUG ((DEBUG_ERROR, "WinRT PM profile: invalid XSDT\n"));
+    return;
+  }
+
+  Count = (Xsdt->Length - sizeof (*Xsdt)) / sizeof (Address);
+  for (Index = 0; Index < Count; Index++) {
+    CopyMem (&Address, (UINT8 *)Xsdt + sizeof (*Xsdt) + Index * sizeof (Address),
+             sizeof (Address));
+    Header = (EFI_ACPI_DESCRIPTION_HEADER *)(UINTN)Address;
+    if ((Header->Signature != EFI_ACPI_6_5_FIXED_ACPI_DESCRIPTION_TABLE_SIGNATURE) ||
+        (Header->Length < OFFSET_OF (EFI_ACPI_6_5_FIXED_ACPI_DESCRIPTION_TABLE,
+                                    PreferredPmProfile) + sizeof (Profile))) {
+      continue;
+    }
+
+    // ACPI tables installed by the platform remain writable until handoff.
+    // Mobile/Slate roles also let BasicDisplay identify an internal panel.
+    Fadt = (EFI_ACPI_6_5_FIXED_ACPI_DESCRIPTION_TABLE *)Header;
+    Fadt->PreferredPmProfile = Profile;
+    Header->Checksum = 0;
+    Header->Checksum = CalculateCheckSum8 ((UINT8 *)Header, Header->Length);
+    DEBUG ((DEBUG_INFO, "WinRT PM profile: FADT profile=%u\n", Profile));
+    return;
+  }
+
+  DEBUG ((DEBUG_ERROR, "WinRT PM profile: FADT unavailable\n"));
+}
+
 EFI_STATUS
 EFIAPI
 InitializeVirtWinRtPlatformDxe (
@@ -403,6 +465,14 @@ InitializeVirtWinRtPlatformDxe (
 
   if (FixedPcdGetBool (PcdWinRtLegacyEgit)) {
     Status = EfiCreateEventReadyToBootEx (TPL_CALLBACK, InstallWinRtLegacyTimerTable,
+                                        NULL, &ReadyEvent);
+    if (EFI_ERROR (Status)) {
+      return Status;
+    }
+  }
+
+  if (FixedPcdGet8 (PcdWinRtPreferredPmProfile) != 0) {
+    Status = EfiCreateEventReadyToBootEx (TPL_CALLBACK, SetWinRtPreferredPmProfile,
                                         NULL, &ReadyEvent);
     if (EFI_ERROR (Status)) {
       return Status;

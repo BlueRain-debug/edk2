@@ -28,6 +28,7 @@
   ArmVirtPkg/ArmVirtQemuWinRtPkg.dec
 
 [LibraryClasses]
+  BaseLib
   BaseMemoryLib
   PcdLib
   DevicePathLib
@@ -59,6 +60,7 @@
 
 [FixedPcd]
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtLegacyEgit
+  gArmVirtWinRtTokenSpaceGuid.PcdWinRtPreferredPmProfile
 
 [Guids]
   gEfiAcpi20TableGuid

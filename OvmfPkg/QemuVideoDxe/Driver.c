@@ -445,6 +445,10 @@ QemuVideoControllerDriverStart (
                   &Private->Handle,
                   &gEfiGraphicsOutputProtocolGuid,
                   &Private->GraphicsOutput,
+                  &gEfiEdidDiscoveredProtocolGuid,
+                  &Private->EdidDiscovered,
+                  &gEfiEdidActiveProtocolGuid,
+                  &Private->EdidActive,
                   NULL
                   );
   if (EFI_ERROR (Status)) {
@@ -470,10 +474,15 @@ QemuVideoControllerDriverStart (
   return EFI_SUCCESS;
 
 UninstallGop:
-  gBS->UninstallProtocolInterface (
+  gBS->UninstallMultipleProtocolInterfaces (
          Private->Handle,
          &gEfiGraphicsOutputProtocolGuid,
-         &Private->GraphicsOutput
+         &Private->GraphicsOutput,
+         &gEfiEdidDiscoveredProtocolGuid,
+         &Private->EdidDiscovered,
+         &gEfiEdidActiveProtocolGuid,
+         &Private->EdidActive,
+         NULL
          );
 
 DestructQemuVideoGraphics:
@@ -588,6 +597,10 @@ QemuVideoControllerDriverStop (
                   Private->Handle,
                   &gEfiGraphicsOutputProtocolGuid,
                   &Private->GraphicsOutput,
+                  &gEfiEdidDiscoveredProtocolGuid,
+                  &Private->EdidDiscovered,
+                  &gEfiEdidActiveProtocolGuid,
+                  &Private->EdidActive,
                   NULL
                   );
 
