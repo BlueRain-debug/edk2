@@ -31,6 +31,7 @@
   DEFINE WINRT_UNCACHED_RAM      = TRUE
   DEFINE WINRT_LEGACY_EGIT       = TRUE
   DEFINE WINRT_PM_PROFILE        = 0
+  DEFINE WINRT_NARROW_DISPLAY    = FALSE
   DEFINE TTY_TERMINAL            = FALSE
   DEFINE SECURE_BOOT_ENABLE      = FALSE
   DEFINE TPM2_ENABLE             = FALSE
@@ -148,6 +149,7 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdInstallAcpiSdtProtocol|TRUE
   gUefiOvmfPkgTokenSpaceGuid.PcdQemuBootOrderPciTranslation|TRUE
   gUefiOvmfPkgTokenSpaceGuid.PcdQemuBootOrderMmioTranslation|TRUE
+  gUefiOvmfPkgTokenSpaceGuid.PcdQemuVideoAllowNarrowModes|$(WINRT_NARROW_DISPLAY)
 
   ## If TRUE, Graphics Output Protocol will be installed on virtual handle created by ConsplitterDxe.
   #  It could be set FALSE to save size.
@@ -451,7 +453,9 @@
 
   MdeModulePkg/Universal/Console/ConPlatformDxe/ConPlatformDxe.inf
   MdeModulePkg/Universal/Console/ConSplitterDxe/ConSplitterDxe.inf
+!if $(WINRT_NARROW_DISPLAY) == FALSE
   MdeModulePkg/Universal/Console/GraphicsConsoleDxe/GraphicsConsoleDxe.inf
+!endif
   MdeModulePkg/Universal/Console/TerminalDxe/TerminalDxe.inf
   MdeModulePkg/Universal/SerialDxe/SerialDxe.inf
 

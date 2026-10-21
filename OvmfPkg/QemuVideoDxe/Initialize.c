@@ -375,7 +375,11 @@ QemuVideoBochsEdid (
     Y
     ));
 
-  if ((X < 640) || (Y < 480)) {
+  if ((X < 320) || (Y < 480)) {
+    return;
+  }
+
+  if ((X < 640) && !FeaturePcdGet (PcdQemuVideoAllowNarrowModes)) {
     /* ignore hint, GraphicsConsoleDxe needs 640x480 or larger */
     return;
   }
