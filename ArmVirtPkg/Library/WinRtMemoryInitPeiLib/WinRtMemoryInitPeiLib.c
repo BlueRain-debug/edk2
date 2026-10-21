@@ -23,17 +23,36 @@ STATIC CONST EFI_PHYSICAL_ADDRESS mTegraPages[] = {
   0x60005000, 0x7000E000
 };
 
+STATIC CONST EFI_PHYSICAL_ADDRESS mOmapPages[] = {
+  0x48032000, 0x48034000, 0x48036000,
+  0x4A009000, 0x4A307000, 0x4A318000
+};
+
 STATIC
-BOOLEAN
-WinRtHasTegraTimer (
-  VOID
+CONST EFI_PHYSICAL_ADDRESS *
+WinRtGetTimerPages (
+  OUT UINTN  *Count
   )
 {
   CONST VOID  *Fdt;
 
   Fdt = (VOID *)(UINTN)PcdGet64 (PcdDeviceTreeInitialBaseAddress);
-  return (fdt_check_header (Fdt) == 0) &&
-         (fdt_getprop (Fdt, 0, "qemu,winrt-tegra-timer", NULL) != NULL);
+  *Count = 0;
+  if (fdt_check_header (Fdt) != 0) {
+    return NULL;
+  }
+
+  if (fdt_getprop (Fdt, 0, "qemu,winrt-omap-timer", NULL) != NULL) {
+    *Count = ARRAY_SIZE (mOmapPages);
+    return mOmapPages;
+  }
+
+  if (fdt_getprop (Fdt, 0, "qemu,winrt-tegra-timer", NULL) != NULL) {
+    *Count = ARRAY_SIZE (mTegraPages);
+    return mTegraPages;
+  }
+
+  return NULL;
 }
 
 STATIC
@@ -76,35 +95,38 @@ InitMmu (
   VOID                          *TranslationTableBase;
   UINTN                         TranslationTableSize;
   RETURN_STATUS                 Status;
-  ARM_MEMORY_REGION_DESCRIPTOR  *TegraMemoryTable;
+  ARM_MEMORY_REGION_DESCRIPTOR  *TimerMemoryTable;
+  CONST EFI_PHYSICAL_ADDRESS    *TimerPages;
+  UINTN                         TimerPageCount;
   UINTN                         Count;
   UINTN                         Index;
 
   // Get Virtual Memory Map from the Platform Library
   ArmVirtGetMemoryMap (&MemoryTable);
 
-  if (WinRtHasTegraTimer ()) {
+  TimerPages = WinRtGetTimerPages (&TimerPageCount);
+  if (TimerPageCount != 0) {
     for (Count = 0; MemoryTable[Count].Length != 0; Count++) {
     }
 
-    TegraMemoryTable = AllocateZeroPool (
-                         (Count + ARRAY_SIZE (mTegraPages) + 1) *
+    TimerMemoryTable = AllocateZeroPool (
+                         (Count + TimerPageCount + 1) *
                          sizeof (*MemoryTable)
                          );
-    ASSERT (TegraMemoryTable != NULL);
-    if (TegraMemoryTable == NULL) {
+    ASSERT (TimerMemoryTable != NULL);
+    if (TimerMemoryTable == NULL) {
       return;
     }
 
-    CopyMem (TegraMemoryTable, MemoryTable, Count * sizeof (*MemoryTable));
-    for (Index = 0; Index < ARRAY_SIZE (mTegraPages); Index++) {
-      TegraMemoryTable[Count + Index].PhysicalBase = mTegraPages[Index];
-      TegraMemoryTable[Count + Index].VirtualBase  = mTegraPages[Index];
-      TegraMemoryTable[Count + Index].Length       = EFI_PAGE_SIZE;
-      TegraMemoryTable[Count + Index].Attributes   = ARM_MEMORY_REGION_ATTRIBUTE_DEVICE;
+    CopyMem (TimerMemoryTable, MemoryTable, Count * sizeof (*MemoryTable));
+    for (Index = 0; Index < TimerPageCount; Index++) {
+      TimerMemoryTable[Count + Index].PhysicalBase = TimerPages[Index];
+      TimerMemoryTable[Count + Index].VirtualBase  = TimerPages[Index];
+      TimerMemoryTable[Count + Index].Length       = EFI_PAGE_SIZE;
+      TimerMemoryTable[Count + Index].Attributes   = ARM_MEMORY_REGION_ATTRIBUTE_DEVICE;
     }
 
-    MemoryTable = TegraMemoryTable;
+    MemoryTable = TimerMemoryTable;
   }
 
   // Note: Because we called PeiServicesInstallPeiMemory() before to call InitMmu() the MMU Page Table resides in
@@ -128,6 +150,8 @@ MemoryPeim (
   VOID                         *Hob;
   UINT64                       NextBase;
   UINTN                        Index;
+  CONST EFI_PHYSICAL_ADDRESS   *TimerPages;
+  UINTN                        TimerPageCount;
 
   // Ensure PcdSystemMemorySize has been set
   ASSERT (PcdGet64 (PcdSystemMemorySize) != 0);
@@ -160,26 +184,27 @@ MemoryPeim (
   SystemMemoryTop = PcdGet64 (PcdSystemMemoryBase) + SystemMemorySize;
 
   NextBase = PcdGet64 (PcdSystemMemoryBase);
-  if (WinRtHasTegraTimer ()) {
-    for (Index = 0; Index < ARRAY_SIZE (mTegraPages); Index++) {
-      // These fixed HAL addresses overlap virt RAM when more than 512 MB
-      // is configured. Exclude them before PEI/DXE can allocate the pages.
-      if ((mTegraPages[Index] >= NextBase) &&
-          (mTegraPages[Index] < SystemMemoryTop)) {
-        BuildWinRtRamHobs (NextBase, mTegraPages[Index] - NextBase,
+  TimerPages = WinRtGetTimerPages (&TimerPageCount);
+  if (TimerPageCount != 0) {
+    for (Index = 0; Index < TimerPageCount; Index++) {
+      // The fixed HAL addresses can overlap virt RAM. Exclude the pages
+      // before PEI/DXE can allocate them.
+      if ((TimerPages[Index] >= NextBase) &&
+          (TimerPages[Index] < SystemMemoryTop)) {
+        BuildWinRtRamHobs (NextBase, TimerPages[Index] - NextBase,
                            ResourceAttributes);
-        NextBase = mTegraPages[Index] + EFI_PAGE_SIZE;
+        NextBase = TimerPages[Index] + EFI_PAGE_SIZE;
       }
 
       BuildResourceDescriptorHob (
         EFI_RESOURCE_MEMORY_MAPPED_IO,
         EFI_RESOURCE_ATTRIBUTE_PRESENT | EFI_RESOURCE_ATTRIBUTE_INITIALIZED |
         EFI_RESOURCE_ATTRIBUTE_UNCACHEABLE,
-        mTegraPages[Index],
+        TimerPages[Index],
         EFI_PAGE_SIZE
         );
-      DEBUG ((DEBUG_INFO, "WinRT Tegra: reserved MMIO page at 0x%lx\n",
-              mTegraPages[Index]));
+      DEBUG ((DEBUG_INFO, "WinRT: reserved timer MMIO page at 0x%lx\n",
+              TimerPages[Index]));
     }
   }
 
