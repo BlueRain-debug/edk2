@@ -28,6 +28,11 @@ STATIC CONST EFI_PHYSICAL_ADDRESS mOmapPages[] = {
   0x4A009000, 0x4A307000, 0x4A318000
 };
 
+STATIC CONST EFI_PHYSICAL_ADDRESS mOmapDmaPages[] = {
+  0x48032000, 0x48034000, 0x48036000,
+  0x48242000, 0x4A009000, 0x4A056000, 0x4A307000, 0x4A318000
+};
+
 STATIC
 CONST EFI_PHYSICAL_ADDRESS *
 WinRtGetTimerPages (
@@ -40,6 +45,11 @@ WinRtGetTimerPages (
   *Count = 0;
   if (fdt_check_header (Fdt) != 0) {
     return NULL;
+  }
+
+  if (fdt_getprop (Fdt, 0, "qemu,winrt-omap-dma", NULL) != NULL) {
+    *Count = ARRAY_SIZE (mOmapDmaPages);
+    return mOmapDmaPages;
   }
 
   if (fdt_getprop (Fdt, 0, "qemu,winrt-omap-timer", NULL) != NULL) {
