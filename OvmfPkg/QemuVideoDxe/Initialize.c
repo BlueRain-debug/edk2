@@ -407,6 +407,7 @@ QemuVideoBochsModeSetup (
 {
   UINT32  AvailableFbSize;
   UINT32  Index, XRes = 0, YRes = 0;
+  UINT32  MaxXRes = 0, MaxYRes = 0;
 
   //
   // Fetch the available framebuffer size.
@@ -496,6 +497,26 @@ QemuVideoBochsModeSetup (
   }
 
   QemuVideoBochsEdid (Private, &XRes, &YRes);
+  if (FeaturePcdGet (PcdQemuVideoLimitModesToPreferred)) {
+    //
+    // Some OS loaders select the largest GOP mode instead of the EDID hint.
+    // Keep smaller modes for firmware setup while capping the exposed list
+    // at the preferred dimensions supplied by QEMU's xres/yres properties.
+    // Without a usable EDID, use the platform's configured resolution.
+    //
+    MaxXRes = (XRes != 0) ? XRes : PcdGet32 (PcdVideoHorizontalResolution);
+    MaxYRes = (YRes != 0) ? YRes : PcdGet32 (PcdVideoVerticalResolution);
+    XRes    = MaxXRes;
+    YRes    = MaxYRes;
+    DEBUG ((
+      DEBUG_INFO,
+      "%a: limiting GOP modes to %dx%d\n",
+      __func__,
+      MaxXRes,
+      MaxYRes
+      ));
+  }
+
   if (XRes && YRes) {
     QemuVideoBochsAddMode (
       Private,
@@ -506,6 +527,12 @@ QemuVideoBochsModeSetup (
   }
 
   for (Index = 0; Index < QEMU_VIDEO_BOCHS_MODE_COUNT; Index++) {
+    if (((MaxXRes != 0) && (QemuVideoBochsModes[Index].Width > MaxXRes)) ||
+        ((MaxYRes != 0) && (QemuVideoBochsModes[Index].Height > MaxYRes)))
+    {
+      continue;
+    }
+
     if ((QemuVideoBochsModes[Index].Width == XRes) &&
         (QemuVideoBochsModes[Index].Height == YRes))
     {

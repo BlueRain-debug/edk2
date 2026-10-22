@@ -64,6 +64,7 @@
 [FeaturePcd]
   gUefiOvmfPkgTokenSpaceGuid.PcdRemapFrameBufferWriteCombine
   gUefiOvmfPkgTokenSpaceGuid.PcdQemuVideoAllowNarrowModes
+  gUefiOvmfPkgTokenSpaceGuid.PcdQemuVideoLimitModesToPreferred
 
 [Pcd]
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfHostBridgePciDevId

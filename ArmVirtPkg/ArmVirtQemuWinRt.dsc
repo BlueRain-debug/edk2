@@ -32,6 +32,7 @@
   DEFINE WINRT_LEGACY_EGIT       = TRUE
   DEFINE WINRT_PM_PROFILE        = 0
   DEFINE WINRT_NARROW_DISPLAY    = FALSE
+  DEFINE WINRT_LIMIT_DISPLAY     = TRUE
   DEFINE TTY_TERMINAL            = FALSE
   DEFINE SECURE_BOOT_ENABLE      = FALSE
   DEFINE TPM2_ENABLE             = FALSE
@@ -150,6 +151,7 @@
   gUefiOvmfPkgTokenSpaceGuid.PcdQemuBootOrderPciTranslation|TRUE
   gUefiOvmfPkgTokenSpaceGuid.PcdQemuBootOrderMmioTranslation|TRUE
   gUefiOvmfPkgTokenSpaceGuid.PcdQemuVideoAllowNarrowModes|$(WINRT_NARROW_DISPLAY)
+  gUefiOvmfPkgTokenSpaceGuid.PcdQemuVideoLimitModesToPreferred|$(WINRT_LIMIT_DISPLAY)
 
   ## If TRUE, Graphics Output Protocol will be installed on virtual handle created by ConsplitterDxe.
   #  It could be set FALSE to save size.

@@ -458,3 +458,8 @@
   ## Allow portrait GOP modes narrower than 640 pixels. Platforms enabling this
   #  must use a serial text console: GraphicsConsoleDxe requires 80 columns.
   gUefiOvmfPkgTokenSpaceGuid.PcdQemuVideoAllowNarrowModes|FALSE|BOOLEAN|0x76
+
+  ## Limit Bochs GOP modes to the EDID preferred dimensions, falling back to
+  #  PcdVideo{Horizontal,Vertical}Resolution when no EDID hint is available.
+  #  This prevents firmware-only OS display paths from selecting larger modes.
+  gUefiOvmfPkgTokenSpaceGuid.PcdQemuVideoLimitModesToPreferred|FALSE|BOOLEAN|0x77

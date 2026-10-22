@@ -15,15 +15,22 @@ concurrency:
 
 jobs:
   firmware:
-    name: ARM / ${{ matrix.target }}
+    name: ARM / ${{ matrix.target }} / ${{ matrix.display.name }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
         target: [DEBUG, RELEASE]
+        display:
+          - name: limited
+            limit: 'TRUE'
+          - name: unlimited
+            limit: 'FALSE'
     env:
       BUILD_TARGET: ${{ matrix.target }}
+      DISPLAY_VARIANT: ${{ matrix.display.name }}
+      WINRT_LIMIT_DISPLAY: ${{ matrix.display.limit }}
     defaults:
       run:
         shell: bash
@@ -71,13 +78,14 @@ jobs:
             -D NETWORK_ENABLE=FALSE -D TPM2_ENABLE=FALSE \
             -D FD_SIZE_IN_MB=3 -D WINRT_SD_IO_ALIGN=0 \
             -D WINRT_UNCACHED_RAM=TRUE \
+            -D "WINRT_LIMIT_DISPLAY=$WINRT_LIMIT_DISPLAY" \
             2>&1 | tee build-winrt.log
 
       - name: Package firmware
         run: |
           set -euo pipefail
           firmware_dir="Build/ArmVirtQemuWinRt-ARM/${BUILD_TARGET}_GCC5/FV"
-          artifact_dir="dist/winrt-${BUILD_TARGET}"
+          artifact_dir="dist/winrt-${BUILD_TARGET}-${DISPLAY_VARIANT}"
           mkdir -p "$artifact_dir"
           cp "$firmware_dir/QEMU_EFI.fd" "$firmware_dir/QEMU_VARS.fd" "$artifact_dir/"
           (
@@ -86,6 +94,8 @@ jobs:
           )
           {
             git rev-parse HEAD
+            printf 'BUILD_TARGET=%s\nWINRT_LIMIT_DISPLAY=%s\n' \
+              "$BUILD_TARGET" "$WINRT_LIMIT_DISPLAY"
             arm-none-eabi-gcc --version
             python3 --version
           } > "$artifact_dir/build-info.txt"
@@ -93,8 +103,8 @@ jobs:
       - name: Upload firmware
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: edk2-winrt-ARM-${{ matrix.target }}
-          path: dist/winrt-${{ matrix.target }}/
+          name: edk2-winrt-ARM-${{ matrix.target }}-${{ matrix.display.name }}
+          path: dist/winrt-${{ matrix.target }}-${{ matrix.display.name }}/
           if-no-files-found: error
           retention-days: 30
 
@@ -102,7 +112,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: edk2-winrt-ARM-${{ matrix.target }}-logs
+          name: edk2-winrt-ARM-${{ matrix.target }}-${{ matrix.display.name }}-logs
           path: |
             build-basetools.log
             build-winrt.log
