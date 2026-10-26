@@ -33,6 +33,7 @@
   DEFINE WINRT_PM_PROFILE        = 0
   DEFINE WINRT_NARROW_DISPLAY    = FALSE
   DEFINE WINRT_LIMIT_DISPLAY     = TRUE
+  DEFINE WINRT_BOOT_BATTERY      = FALSE
   DEFINE TTY_TERMINAL            = FALSE
   DEFINE SECURE_BOOT_ENABLE      = FALSE
   DEFINE TPM2_ENABLE             = FALSE
@@ -627,6 +628,9 @@
   # ACPI Support
   #
   ArmVirtPkg/VirtWinRtPlatformDxe/VirtWinRtPlatformDxe.inf
+!if $(WINRT_BOOT_BATTERY) == TRUE
+  ArmVirtPkg/WinRtBootPowerDxe/WinRtBootPowerDxe.inf
+!endif
   MdeModulePkg/Bus/Pci/NonDiscoverablePciDeviceDxe/NonDiscoverablePciDeviceDxe.inf
   MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.inf
   MdeModulePkg/Bus/Sd/EmmcDxe/EmmcDxe.inf

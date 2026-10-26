@@ -1,0 +1,33 @@
+## @file
+#  Optional virtual battery for Windows mobile boot applications.
+#  SPDX-License-Identifier: BSD-2-Clause-Patent
+##
+
+[Defines]
+  INF_VERSION                    = 0x0001001c
+  BASE_NAME                      = WinRtBootPowerDxe
+  FILE_GUID                      = 99f7f6b0-d89e-4ae6-a443-741c5dbce612
+  MODULE_TYPE                    = DXE_DRIVER
+  VERSION_STRING                 = 1.0
+  ENTRY_POINT                    = InitializeWinRtBootPower
+
+[Sources]
+  WinRtBootPowerDxe.c
+
+[Packages]
+  MdePkg/MdePkg.dec
+  ArmVirtPkg/ArmVirtQemuWinRtPkg.dec
+
+[LibraryClasses]
+  DebugLib
+  MemoryAllocationLib
+  UefiBootServicesTableLib
+  UefiDriverEntryPoint
+
+[Protocols]
+  gEfiPciIoProtocolGuid
+  gWinRtBatteryChargingProtocolGuid
+  gWinRtDisplayPowerProtocolGuid
+
+[Depex]
+  TRUE

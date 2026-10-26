@@ -148,6 +148,9 @@ READ_LOCK_STATUS   = TRUE
   # ACPI Support
   #
   INF ArmVirtPkg/VirtWinRtPlatformDxe/VirtWinRtPlatformDxe.inf
+!if $(WINRT_BOOT_BATTERY) == TRUE
+  INF ArmVirtPkg/WinRtBootPowerDxe/WinRtBootPowerDxe.inf
+!endif
   INF MdeModulePkg/Bus/Pci/NonDiscoverablePciDeviceDxe/NonDiscoverablePciDeviceDxe.inf
   INF MdeModulePkg/Bus/Pci/SdMmcPciHcDxe/SdMmcPciHcDxe.inf
   INF MdeModulePkg/Bus/Sd/EmmcDxe/EmmcDxe.inf
