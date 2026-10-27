@@ -60,6 +60,7 @@
 
 [FixedPcd]
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtLegacyEgit
+  gArmVirtWinRtTokenSpaceGuid.PcdWinRtLegacyTegra2
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtPreferredPmProfile
 
 [Guids]

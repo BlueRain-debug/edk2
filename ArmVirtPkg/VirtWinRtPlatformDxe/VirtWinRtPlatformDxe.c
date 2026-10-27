@@ -27,6 +27,48 @@
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiDriverEntryPoint.h>
 
+// Early ARM loaders query this UEFI configuration table before loading the
+// HAL. Without it, automatic selection falls back to halunknown.dll.
+STATIC EFI_GUID  mWinRtLegacyHalGuid = {
+  0xd5cf1c38, 0xb00b, 0x4bce,
+  { 0x8f, 0xf3, 0x5d, 0xa6, 0xfe, 0xd0, 0x8e, 0x88 }
+};
+
+typedef struct {
+  UINT32    Version;
+  CHAR16    HalName[32];
+  CHAR16    KdName[32];
+} WINRT_LEGACY_HAL_TABLE;
+
+STATIC_ASSERT (sizeof (WINRT_LEGACY_HAL_TABLE) == 0x84, "Legacy HAL table size");
+STATIC_ASSERT (OFFSET_OF (WINRT_LEGACY_HAL_TABLE, KdName) == 0x44, "Legacy KD offset");
+
+STATIC
+EFI_STATUS
+InstallWinRtLegacyHalTable (
+  VOID
+  )
+{
+  EFI_STATUS              Status;
+  WINRT_LEGACY_HAL_TABLE  *Table;
+
+  Table = AllocateRuntimeZeroPool (sizeof (*Table));
+  if (Table == NULL) {
+    return EFI_OUT_OF_RESOURCES;
+  }
+
+  Table->Version = 1;
+  CopyMem (Table->HalName, L"haltegra2.dll", sizeof (L"haltegra2.dll"));
+  CopyMem (Table->KdName, L"kd.dll", sizeof (L"kd.dll"));
+  Status = gBS->InstallConfigurationTable (&mWinRtLegacyHalGuid, Table);
+  if (EFI_ERROR (Status)) {
+    FreePool (Table);
+  }
+
+  DEBUG ((DEBUG_INFO, "WinRT legacy Tegra2 HAL table: %r\n", Status));
+  return Status;
+}
+
 // Apply the alignment when Block I/O is installed, before DiskIo allocates
 // its shared buffers using the advertised alignment.
 // This is a diagnostic option for the observed 8288 loader buffer alias.
@@ -466,6 +508,13 @@ InitializeVirtWinRtPlatformDxe (
   if (FixedPcdGetBool (PcdWinRtLegacyEgit)) {
     Status = EfiCreateEventReadyToBootEx (TPL_CALLBACK, InstallWinRtLegacyTimerTable,
                                         NULL, &ReadyEvent);
+    if (EFI_ERROR (Status)) {
+      return Status;
+    }
+  }
+
+  if (FixedPcdGetBool (PcdWinRtLegacyTegra2)) {
+    Status = InstallWinRtLegacyHalTable ();
     if (EFI_ERROR (Status)) {
       return Status;
     }

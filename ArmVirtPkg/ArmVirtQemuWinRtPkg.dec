@@ -58,3 +58,6 @@
 
   # Optional FADT platform role; zero retains the machine's ACPI profile.
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtPreferredPmProfile|0|UINT8|0x00000009
+
+  # Opt-in HAL/KD selection table consumed by early ARM Windows loaders.
+  gArmVirtWinRtTokenSpaceGuid.PcdWinRtLegacyTegra2|FALSE|BOOLEAN|0x0000000A

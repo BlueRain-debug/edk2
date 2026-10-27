@@ -17,7 +17,8 @@
   PLATFORM_GUID                  = 7e0b2300-9a47-42fc-b346-b34d23025b69
   PLATFORM_VERSION               = 0.1
   DSC_SPECIFICATION              = 0x00010005
-  OUTPUT_DIRECTORY               = Build/ArmVirtQemuWinRt-$(ARCH)
+  DEFINE WINRT_OUTPUT_DIRECTORY   = Build/ArmVirtQemuWinRt-$(ARCH)
+  OUTPUT_DIRECTORY               = $(WINRT_OUTPUT_DIRECTORY)
   SUPPORTED_ARCHITECTURES        = ARM
   BUILD_TARGETS                  = DEBUG|RELEASE|NOOPT
   SKUID_IDENTIFIER               = DEFAULT
@@ -30,6 +31,8 @@
   DEFINE WINRT_SD_IO_ALIGN       = 0
   DEFINE WINRT_UNCACHED_RAM      = TRUE
   DEFINE WINRT_LEGACY_EGIT       = TRUE
+  DEFINE WINRT_LEGACY_TEGRA2     = FALSE
+  DEFINE WINRT_RAM_BASE          = 0x40000000
   DEFINE WINRT_PM_PROFILE        = 0
   DEFINE WINRT_NARROW_DISPLAY    = FALSE
   DEFINE WINRT_LIMIT_DISPLAY     = TRUE
@@ -165,7 +168,7 @@
 
 [PcdsFixedAtBuild.common]
   # AArch32 WinRT uses the ACPI parking protocol instead of PSCI.
-  gArmVirtWinRtTokenSpaceGuid.PcdWinRtSecondaryReleaseBase|0x40060000
+  gArmVirtWinRtTokenSpaceGuid.PcdWinRtSecondaryReleaseBase|($(WINRT_RAM_BASE) + 0x60000)
   gArmVirtWinRtTokenSpaceGuid.PcdPlatformEhciBase|0x090e0000
   gArmVirtWinRtTokenSpaceGuid.PcdPlatformEhciSize|0x00010000
   gArmVirtWinRtTokenSpaceGuid.PcdPlatformSdHciBase|0x090f0000
@@ -173,12 +176,13 @@
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtSdIoAlign|$(WINRT_SD_IO_ALIGN)
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtUncachedRam|$(WINRT_UNCACHED_RAM)
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtLegacyEgit|$(WINRT_LEGACY_EGIT)
+  gArmVirtWinRtTokenSpaceGuid.PcdWinRtLegacyTegra2|$(WINRT_LEGACY_TEGRA2)
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtPreferredPmProfile|$(WINRT_PM_PROFILE)
 
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFdBaseAddress|0x00000000
   gUefiOvmfPkgTokenSpaceGuid.PcdOvmfFirmwareFdSize|$(FD_SIZE)
 
-  gArmPlatformTokenSpaceGuid.PcdCPUCoresStackBase|0x4007c000
+  gArmPlatformTokenSpaceGuid.PcdCPUCoresStackBase|($(WINRT_RAM_BASE) + 0x7c000)
   gArmPlatformTokenSpaceGuid.PcdCPUCorePrimaryStackSize|0x4000
   # Mobile boot policy variables can exceed 16 KiB, before authentication data.
   gEfiMdeModulePkgTokenSpaceGuid.PcdMaxVariableSize|0x8000
@@ -217,11 +221,11 @@
   #
 !include NetworkPkg/NetworkFixedPcds.dsc.inc
 
-  # System Memory Base -- fixed at 0x4000_0000
-  gArmTokenSpaceGuid.PcdSystemMemoryBase|0x40000000
+  # Must match the QEMU RAM layout; the default is the standard virt map.
+  gArmTokenSpaceGuid.PcdSystemMemoryBase|$(WINRT_RAM_BASE)
 
   # initial location of the device tree blob passed by QEMU -- base of DRAM
-  gUefiOvmfPkgTokenSpaceGuid.PcdDeviceTreeInitialBaseAddress|0x40000000
+  gUefiOvmfPkgTokenSpaceGuid.PcdDeviceTreeInitialBaseAddress|$(WINRT_RAM_BASE)
 
   gEfiMdeModulePkgTokenSpaceGuid.PcdResetOnMemoryTypeInformationChange|FALSE
   gEfiMdeModulePkgTokenSpaceGuid.PcdBootManagerMenuFile|{ 0x21, 0xaa, 0x2c, 0x46, 0x14, 0x76, 0x03, 0x45, 0x83, 0x6e, 0x8a, 0xb6, 0xf4, 0x66, 0x23, 0x31 }
