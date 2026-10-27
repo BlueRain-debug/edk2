@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   firmware:
-    name: ARM / ${{ matrix.target }} / ${{ matrix.display.name }} / ${{ matrix.power.name }} / ${{ matrix.platform.name }}
+    name: ARM / ${{ matrix.target }} / ${{ matrix.display.name }} / battery / ${{ matrix.graphics.name }} / ${{ matrix.platform.name }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
@@ -23,40 +23,37 @@ jobs:
       matrix:
         target: [DEBUG, RELEASE]
         display:
-          - name: limited
+          # Cap GOP modes at QEMU's xres/yres EDID hint (1024x768 fallback).
+          - name: edid-capped
             limit: 'TRUE'
-          - name: unlimited
+          - name: all-modes
             limit: 'FALSE'
-        power:
-          - name: standard
-            battery: 'FALSE'
-            suffix: ''
-          - name: battery
-            battery: 'TRUE'
-            suffix: '-battery'
+        # Battery support is shared by all 16 combinations.
+        graphics:
+          - name: bgrt
+            enabled: 'TRUE'
+          - name: nobgrt
+            enabled: 'FALSE'
         platform:
           - name: virt
             ram_base: '0x40000000'
             legacy_tegra2: 'FALSE'
             output: Build/ArmVirtQemuWinRt-ARM
-            suffix: ''
           - name: legacy-tegra2
             ram_base: '0x80000000'
             legacy_tegra2: 'TRUE'
             output: Build/ArmVirtQemuWinRt-Legacy
-            suffix: '-legacy-tegra2'
     env:
       BUILD_TARGET: ${{ matrix.target }}
       DISPLAY_VARIANT: ${{ matrix.display.name }}
       WINRT_LIMIT_DISPLAY: ${{ matrix.display.limit }}
-      WINRT_BOOT_BATTERY: ${{ matrix.power.battery }}
-      POWER_SUFFIX: ${{ matrix.power.suffix }}
+      WINRT_BOOT_BATTERY: 'TRUE'
+      BGRT_VARIANT: ${{ matrix.graphics.name }}
+      WINRT_BGRT: ${{ matrix.graphics.enabled }}
       PLATFORM_VARIANT: ${{ matrix.platform.name }}
-      PLATFORM_SUFFIX: ${{ matrix.platform.suffix }}
       WINRT_RAM_BASE: ${{ matrix.platform.ram_base }}
       WINRT_LEGACY_TEGRA2: ${{ matrix.platform.legacy_tegra2 }}
       WINRT_OUTPUT_DIRECTORY: ${{ matrix.platform.output }}
-      WINRT_BGRT: 'FALSE'
     defaults:
       run:
         shell: bash
@@ -116,7 +113,7 @@ jobs:
         run: |
           set -euo pipefail
           firmware_dir="${WINRT_OUTPUT_DIRECTORY}/${BUILD_TARGET}_GCC5/FV"
-          artifact_dir="dist/winrt-${BUILD_TARGET}-${DISPLAY_VARIANT}${POWER_SUFFIX}${PLATFORM_SUFFIX}"
+          artifact_dir="dist/winrt-${BUILD_TARGET}-${DISPLAY_VARIANT}-battery-${BGRT_VARIANT}-${PLATFORM_VARIANT}"
           mkdir -p "$artifact_dir"
           cp "$firmware_dir/QEMU_EFI.fd" "$firmware_dir/QEMU_VARS.fd" "$artifact_dir/"
           (
@@ -127,6 +124,8 @@ jobs:
             git rev-parse HEAD
             printf 'BUILD_TARGET=%s\nWINRT_LIMIT_DISPLAY=%s\nWINRT_BOOT_BATTERY=%s\n' \
               "$BUILD_TARGET" "$WINRT_LIMIT_DISPLAY" "$WINRT_BOOT_BATTERY"
+            printf 'DISPLAY_VARIANT=%s\nBGRT_VARIANT=%s\n' \
+              "$DISPLAY_VARIANT" "$BGRT_VARIANT"
             printf 'PLATFORM=%s\nWINRT_RAM_BASE=%s\nWINRT_LEGACY_TEGRA2=%s\nWINRT_OUTPUT_DIRECTORY=%s\n' \
               "$PLATFORM_VARIANT" "$WINRT_RAM_BASE" \
               "$WINRT_LEGACY_TEGRA2" "$WINRT_OUTPUT_DIRECTORY"
@@ -147,8 +146,8 @@ jobs:
       - name: Upload firmware
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: edk2-winrt-ARM-${{ matrix.target }}-${{ matrix.display.name }}${{ matrix.power.suffix }}${{ matrix.platform.suffix }}
-          path: dist/winrt-${{ matrix.target }}-${{ matrix.display.name }}${{ matrix.power.suffix }}${{ matrix.platform.suffix }}/
+          name: edk2-winrt-ARM-${{ matrix.target }}-${{ matrix.display.name }}-battery-${{ matrix.graphics.name }}-${{ matrix.platform.name }}
+          path: dist/winrt-${{ matrix.target }}-${{ matrix.display.name }}-battery-${{ matrix.graphics.name }}-${{ matrix.platform.name }}/
           if-no-files-found: error
           retention-days: 30
 
@@ -156,7 +155,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: edk2-winrt-ARM-${{ matrix.target }}-${{ matrix.display.name }}${{ matrix.power.suffix }}${{ matrix.platform.suffix }}-logs
+          name: edk2-winrt-ARM-${{ matrix.target }}-${{ matrix.display.name }}-battery-${{ matrix.graphics.name }}-${{ matrix.platform.name }}-logs
           path: |
             build-basetools.log
             build-winrt.log
