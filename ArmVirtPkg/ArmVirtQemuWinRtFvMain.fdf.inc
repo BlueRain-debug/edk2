@@ -157,7 +157,9 @@ READ_LOCK_STATUS   = TRUE
   INF MdeModulePkg/Bus/Sd/SdDxe/SdDxe.inf
 !if $(ARCH) == ARM
   INF MdeModulePkg/Universal/Acpi/AcpiTableDxe/AcpiTableDxe.inf
+!if $(WINRT_BGRT) == TRUE
   INF MdeModulePkg/Universal/Acpi/BootGraphicsResourceTableDxe/BootGraphicsResourceTableDxe.inf
+!endif
   INF OvmfPkg/AcpiPlatformDxe/AcpiPlatformDxe.inf
 !endif
 

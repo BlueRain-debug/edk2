@@ -56,6 +56,7 @@ jobs:
       WINRT_RAM_BASE: ${{ matrix.platform.ram_base }}
       WINRT_LEGACY_TEGRA2: ${{ matrix.platform.legacy_tegra2 }}
       WINRT_OUTPUT_DIRECTORY: ${{ matrix.platform.output }}
+      WINRT_BGRT: 'FALSE'
     defaults:
       run:
         shell: bash
@@ -108,6 +109,7 @@ jobs:
             -D "WINRT_RAM_BASE=$WINRT_RAM_BASE" \
             -D "WINRT_LEGACY_TEGRA2=$WINRT_LEGACY_TEGRA2" \
             -D "WINRT_OUTPUT_DIRECTORY=$WINRT_OUTPUT_DIRECTORY" \
+            -D "WINRT_BGRT=$WINRT_BGRT" \
             2>&1 | tee build-winrt.log
 
       - name: Package firmware
@@ -128,6 +130,7 @@ jobs:
             printf 'PLATFORM=%s\nWINRT_RAM_BASE=%s\nWINRT_LEGACY_TEGRA2=%s\nWINRT_OUTPUT_DIRECTORY=%s\n' \
               "$PLATFORM_VARIANT" "$WINRT_RAM_BASE" \
               "$WINRT_LEGACY_TEGRA2" "$WINRT_OUTPUT_DIRECTORY"
+            printf 'WINRT_BGRT=%s\n' "$WINRT_BGRT"
             if [[ "$WINRT_LEGACY_TEGRA2" == TRUE ]]; then
               printf 'QEMU_MACHINE_ARGS=%s\nQEMU_MAX_RAM=%s\n' \
                 'virt,winrt=on,highmem=off,gic-version=2,winrt-sp804=off,winrt-tegra-timer=on,winrt-legacy-ram=on,winrt-tegra2=on' \

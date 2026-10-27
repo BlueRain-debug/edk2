@@ -37,6 +37,8 @@
   DEFINE WINRT_NARROW_DISPLAY    = FALSE
   DEFINE WINRT_LIMIT_DISPLAY     = TRUE
   DEFINE WINRT_BOOT_BATTERY      = FALSE
+  # Some early ARM loaders assert when consuming the firmware's centered logo.
+  DEFINE WINRT_BGRT              = FALSE
   DEFINE TTY_TERMINAL            = FALSE
   DEFINE SECURE_BOOT_ENABLE      = FALSE
   DEFINE TPM2_ENABLE             = FALSE
@@ -644,7 +646,9 @@
     <LibraryClasses>
       NULL|EmbeddedPkg/Library/PlatformHasAcpiLib/PlatformHasAcpiLib.inf
   }
+!if $(WINRT_BGRT) == TRUE
   MdeModulePkg/Universal/Acpi/BootGraphicsResourceTableDxe/BootGraphicsResourceTableDxe.inf
+!endif
   OvmfPkg/AcpiPlatformDxe/AcpiPlatformDxe.inf {
     <LibraryClasses>
       NULL|OvmfPkg/Fdt/FdtPciPcdProducerLib/FdtPciPcdProducerLib.inf
