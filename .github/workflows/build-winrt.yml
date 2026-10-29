@@ -4,7 +4,20 @@ on:
   push:
     branches:
       - edk2-stable202411-winrt
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.rst'
+      - 'docs/**'
   workflow_dispatch:
+    inputs:
+      build_set:
+        description: 'release/debug: 4 NoBGRT variants; full: all 16 variants'
+        type: choice
+        default: release
+        options:
+          - release
+          - debug
+          - full
 
 permissions:
   contents: read
@@ -15,45 +28,11 @@ concurrency:
 
 jobs:
   firmware:
-    name: ARM / ${{ matrix.target }} / ${{ matrix.display.name }} / battery / ${{ matrix.graphics.name }} / ${{ matrix.platform.name }}
+    name: ARM firmware bundle / ${{ inputs.build_set || 'release' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        target: [DEBUG, RELEASE]
-        display:
-          # Cap GOP modes at QEMU's xres/yres EDID hint (1024x768 fallback).
-          - name: edid-capped
-            limit: 'TRUE'
-          - name: all-modes
-            limit: 'FALSE'
-        # Battery support is shared by all 16 combinations.
-        graphics:
-          - name: bgrt
-            enabled: 'TRUE'
-          - name: nobgrt
-            enabled: 'FALSE'
-        platform:
-          - name: virt
-            ram_base: '0x40000000'
-            legacy_tegra2: 'FALSE'
-            output: Build/ArmVirtQemuWinRt-ARM
-          - name: legacy-tegra2
-            ram_base: '0x80000000'
-            legacy_tegra2: 'TRUE'
-            output: Build/ArmVirtQemuWinRt-Legacy
     env:
-      BUILD_TARGET: ${{ matrix.target }}
-      DISPLAY_VARIANT: ${{ matrix.display.name }}
-      WINRT_LIMIT_DISPLAY: ${{ matrix.display.limit }}
+      BUILD_SET: ${{ inputs.build_set || 'release' }}
       WINRT_BOOT_BATTERY: 'TRUE'
-      BGRT_VARIANT: ${{ matrix.graphics.name }}
-      WINRT_BGRT: ${{ matrix.graphics.enabled }}
-      PLATFORM_VARIANT: ${{ matrix.platform.name }}
-      WINRT_RAM_BASE: ${{ matrix.platform.ram_base }}
-      WINRT_LEGACY_TEGRA2: ${{ matrix.platform.legacy_tegra2 }}
-      WINRT_OUTPUT_DIRECTORY: ${{ matrix.platform.output }}
     defaults:
       run:
         shell: bash
@@ -73,9 +52,19 @@ jobs:
             build-essential gcc-arm-none-eabi binutils-arm-none-eabi \
             acpica-tools nasm uuid-dev python3
 
-      - name: Build WinRT firmware
+      - name: Build and package firmware variants
         run: |
           set -euo pipefail
+          # Pushes build only the release NoBGRT set. The full set is opt-in.
+          targets=(RELEASE)
+          graphics=(nobgrt)
+          case "$BUILD_SET" in
+            release) ;;
+            debug) targets=(DEBUG) ;;
+            full) targets=(RELEASE DEBUG); graphics=(nobgrt bgrt) ;;
+            *) echo "Unknown build set: $BUILD_SET" >&2; exit 2 ;;
+          esac
+
           export WORKSPACE="$GITHUB_WORKSPACE"
           export EDK_TOOLS_PATH="$WORKSPACE/BaseTools"
           export CONF_PATH="$WORKSPACE/Conf"
@@ -85,7 +74,7 @@ jobs:
           export IASL_PREFIX=/usr/bin/
           export PATH="$EDK_TOOLS_PATH/BinWrappers/PosixLike:$EDK_TOOLS_PATH/Source/C/bin:$PATH"
 
-          mkdir -p "$CONF_PATH"
+          mkdir -p "$CONF_PATH" logs dist
           for config in target tools_def build_rule; do
             cp "BaseTools/Conf/$config.template" "$CONF_PATH/$config.txt"
           done
@@ -93,71 +82,111 @@ jobs:
           make -C BaseTools/Source/C -j2 \
             'CC=gcc -std=gnu11' EXTRA_OPTFLAGS=-Wno-error \
             GenFfs GenFv GenFw GenSec LzmaCompress TianoCompress VfrCompile \
-            2>&1 | tee build-basetools.log
+            2>&1 | tee logs/build-basetools.log
 
-          python3 BaseTools/Source/Python/build/build.py \
-            -p ArmVirtPkg/ArmVirtQemuWinRt.dsc \
-            -a ARM -b "$BUILD_TARGET" -t GCC5 -n 2 \
-            -D NETWORK_ENABLE=FALSE -D TPM2_ENABLE=FALSE \
-            -D FD_SIZE_IN_MB=3 -D WINRT_SD_IO_ALIGN=0 \
-            -D WINRT_UNCACHED_RAM=TRUE \
-            -D "WINRT_LIMIT_DISPLAY=$WINRT_LIMIT_DISPLAY" \
-            -D "WINRT_BOOT_BATTERY=$WINRT_BOOT_BATTERY" \
-            -D "WINRT_RAM_BASE=$WINRT_RAM_BASE" \
-            -D "WINRT_LEGACY_TEGRA2=$WINRT_LEGACY_TEGRA2" \
-            -D "WINRT_OUTPUT_DIRECTORY=$WINRT_OUTPUT_DIRECTORY" \
-            -D "WINRT_BGRT=$WINRT_BGRT" \
-            2>&1 | tee build-winrt.log
-
-      - name: Package firmware
-        run: |
-          set -euo pipefail
-          firmware_dir="${WINRT_OUTPUT_DIRECTORY}/${BUILD_TARGET}_GCC5/FV"
-          artifact_dir="dist/winrt-${BUILD_TARGET}-${DISPLAY_VARIANT}-battery-${BGRT_VARIANT}-${PLATFORM_VARIANT}"
-          mkdir -p "$artifact_dir"
-          cp "$firmware_dir/QEMU_EFI.fd" "$firmware_dir/QEMU_VARS.fd" "$artifact_dir/"
-          (
-            cd "$artifact_dir"
-            sha256sum QEMU_EFI.fd QEMU_VARS.fd > SHA256SUMS
-          )
+          revision=$(git rev-parse HEAD)
           {
-            git rev-parse HEAD
-            printf 'BUILD_TARGET=%s\nWINRT_LIMIT_DISPLAY=%s\nWINRT_BOOT_BATTERY=%s\n' \
-              "$BUILD_TARGET" "$WINRT_LIMIT_DISPLAY" "$WINRT_BOOT_BATTERY"
-            printf 'DISPLAY_VARIANT=%s\nBGRT_VARIANT=%s\n' \
-              "$DISPLAY_VARIANT" "$BGRT_VARIANT"
-            printf 'PLATFORM=%s\nWINRT_RAM_BASE=%s\nWINRT_LEGACY_TEGRA2=%s\nWINRT_OUTPUT_DIRECTORY=%s\n' \
-              "$PLATFORM_VARIANT" "$WINRT_RAM_BASE" \
-              "$WINRT_LEGACY_TEGRA2" "$WINRT_OUTPUT_DIRECTORY"
-            printf 'WINRT_BGRT=%s\n' "$WINRT_BGRT"
-            if [[ "$WINRT_LEGACY_TEGRA2" == TRUE ]]; then
-              printf 'QEMU_MACHINE_ARGS=%s\nQEMU_MAX_RAM=%s\n' \
-                'virt,winrt=on,highmem=off,gic-version=2,winrt-sp804=off,winrt-tegra-timer=on,winrt-legacy-ram=on,winrt-tegra2=on' \
-                '1G'
-            fi
-            if [[ "$WINRT_BOOT_BATTERY" == TRUE ]]; then
-              printf 'QEMU_RNG_ARGS=%s\n' \
-                '-object rng-builtin,id=host-rng -device virtio-rng-device,rng=host-rng'
-            fi
             arm-none-eabi-gcc --version
             python3 --version
-          } > "$artifact_dir/build-info.txt"
+          } > logs/toolchain.txt
+          {
+            printf 'Build set: **%s**, battery enabled in every variant.\n\n' "$BUILD_SET"
+            printf '| Firmware directory | Build time (seconds) |\n| --- | ---: |\n'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          for PLATFORM_VARIANT in virt legacy-tegra2; do
+            case "$PLATFORM_VARIANT" in
+              virt)
+                WINRT_RAM_BASE=0x40000000
+                WINRT_LEGACY_TEGRA2=FALSE
+                WINRT_OUTPUT_DIRECTORY=Build/ArmVirtQemuWinRt-ARM
+                ;;
+              legacy-tegra2)
+                WINRT_RAM_BASE=0x80000000
+                WINRT_LEGACY_TEGRA2=TRUE
+                WINRT_OUTPUT_DIRECTORY=Build/ArmVirtQemuWinRt-Legacy
+                ;;
+            esac
+            for BUILD_TARGET in "${targets[@]}"; do
+              # Reuse module objects for display/BGRT variants of this platform.
+              # Keep AutoGen enabled so changed defines/PCDs are regenerated.
+              for DISPLAY_VARIANT in edid-capped all-modes; do
+                WINRT_LIMIT_DISPLAY=FALSE
+                if [[ "$DISPLAY_VARIANT" == edid-capped ]]; then
+                  # Cap GOP at the xres/yres EDID hint (1024x768 fallback).
+                  WINRT_LIMIT_DISPLAY=TRUE
+                fi
+                for BGRT_VARIANT in "${graphics[@]}"; do
+                  WINRT_BGRT=FALSE
+                  if [[ "$BGRT_VARIANT" == bgrt ]]; then
+                    WINRT_BGRT=TRUE
+                  fi
+                  variant="winrt-${BUILD_TARGET}-${DISPLAY_VARIANT}-battery-${BGRT_VARIANT}-${PLATFORM_VARIANT}"
+                  echo "::group::Build $variant"
+                  started=$SECONDS
+                  python3 BaseTools/Source/Python/build/build.py \
+                    -p ArmVirtPkg/ArmVirtQemuWinRt.dsc \
+                    -a ARM -b "$BUILD_TARGET" -t GCC5 -n 2 \
+                    -D NETWORK_ENABLE=FALSE -D TPM2_ENABLE=FALSE \
+                    -D FD_SIZE_IN_MB=3 -D WINRT_SD_IO_ALIGN=0 \
+                    -D WINRT_UNCACHED_RAM=TRUE \
+                    -D "WINRT_LIMIT_DISPLAY=$WINRT_LIMIT_DISPLAY" \
+                    -D "WINRT_BOOT_BATTERY=$WINRT_BOOT_BATTERY" \
+                    -D "WINRT_RAM_BASE=$WINRT_RAM_BASE" \
+                    -D "WINRT_LEGACY_TEGRA2=$WINRT_LEGACY_TEGRA2" \
+                    -D "WINRT_OUTPUT_DIRECTORY=$WINRT_OUTPUT_DIRECTORY" \
+                    -D "WINRT_BGRT=$WINRT_BGRT" \
+                    2>&1 | tee "logs/${variant}.log"
+                  elapsed=$((SECONDS - started))
+                  echo '::endgroup::'
+
+                  # Save each FD before the next variant reuses its build tree.
+                  firmware_dir="${WINRT_OUTPUT_DIRECTORY}/${BUILD_TARGET}_GCC5/FV"
+                  artifact_dir="dist/$variant"
+                  mkdir -p "$artifact_dir"
+                  cp "$firmware_dir/QEMU_EFI.fd" "$firmware_dir/QEMU_VARS.fd" "$artifact_dir/"
+                  (
+                    cd "$artifact_dir"
+                    sha256sum QEMU_EFI.fd QEMU_VARS.fd > SHA256SUMS
+                  )
+                  {
+                    printf '%s\nBUILD_SET=%s\nBUILD_TARGET=%s\n' "$revision" "$BUILD_SET" "$BUILD_TARGET"
+                    printf 'DISPLAY_VARIANT=%s\nWINRT_LIMIT_DISPLAY=%s\n' \
+                      "$DISPLAY_VARIANT" "$WINRT_LIMIT_DISPLAY"
+                    printf 'WINRT_BOOT_BATTERY=%s\nBGRT_VARIANT=%s\nWINRT_BGRT=%s\n' \
+                      "$WINRT_BOOT_BATTERY" "$BGRT_VARIANT" "$WINRT_BGRT"
+                    printf 'PLATFORM=%s\nWINRT_RAM_BASE=%s\nWINRT_LEGACY_TEGRA2=%s\nWINRT_OUTPUT_DIRECTORY=%s\n' \
+                      "$PLATFORM_VARIANT" "$WINRT_RAM_BASE" \
+                      "$WINRT_LEGACY_TEGRA2" "$WINRT_OUTPUT_DIRECTORY"
+                    if [[ "$WINRT_LEGACY_TEGRA2" == TRUE ]]; then
+                      printf 'QEMU_MACHINE_ARGS=%s\nQEMU_MAX_RAM=%s\n' \
+                        'virt,winrt=on,highmem=off,gic-version=2,winrt-sp804=off,winrt-tegra-timer=on,winrt-legacy-ram=on,winrt-tegra2=on' \
+                        '1G'
+                    fi
+                    printf 'QEMU_RNG_ARGS=%s\n' \
+                      '-object rng-builtin,id=host-rng -device virtio-rng-device,rng=host-rng'
+                    cat logs/toolchain.txt
+                  } > "$artifact_dir/build-info.txt"
+                  printf '| `%s` | %s |\n' "$variant" "$elapsed" >> "$GITHUB_STEP_SUMMARY"
+                done
+              done
+            done
+          done
 
       - name: Upload firmware
+        if: ${{ !cancelled() && hashFiles('dist/**/SHA256SUMS') != '' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: edk2-winrt-ARM-${{ matrix.target }}-${{ matrix.display.name }}-battery-${{ matrix.graphics.name }}-${{ matrix.platform.name }}
-          path: dist/winrt-${{ matrix.target }}-${{ matrix.display.name }}-battery-${{ matrix.graphics.name }}-${{ matrix.platform.name }}/
+          name: edk2-winrt-ARM-${{ env.BUILD_SET }}-bundle
+          path: dist/
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 14
 
       - name: Upload build logs
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: edk2-winrt-ARM-${{ matrix.target }}-${{ matrix.display.name }}-battery-${{ matrix.graphics.name }}-${{ matrix.platform.name }}-logs
-          path: |
-            build-basetools.log
-            build-winrt.log
+          name: edk2-winrt-ARM-${{ env.BUILD_SET }}-logs
+          path: logs/
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 7
