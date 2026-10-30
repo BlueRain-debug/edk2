@@ -120,10 +120,9 @@ PrepareWinRtParking (
   if ((Offset != Copy->Length) || ((Mask & (1U << Bsp)) == 0)) {
     goto Invalid;
   }
-  if (Count == 1) {
-    DEBUG ((DEBUG_INFO, "WinRT SMP: one CPU, parking not required\n"));
-    goto Done;
-  }
+  // Publish a valid descriptor for the BSP even with a single CPU. Some kernels
+  // validate parking metadata for every enabled GICC before checking
+  // whether any secondary processors need to be started.
   CodeSize = (UINTN)WinRtParkingEnd - (UINTN)WinRtParkingStart;
   if (CodeSize > WINRT_SMP_READY_OFFSET - WINRT_SMP_CODE_OFFSET) {
     goto Invalid;
