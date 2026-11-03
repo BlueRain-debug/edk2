@@ -37,6 +37,7 @@
   DEFINE WINRT_NARROW_DISPLAY    = FALSE
   DEFINE WINRT_LIMIT_DISPLAY     = TRUE
   DEFINE WINRT_BOOT_BATTERY      = FALSE
+  DEFINE WINRT_MBR_LOGICAL_OFFSET = 0
   # Some early ARM loaders assert when consuming the firmware's centered logo.
   DEFINE WINRT_BGRT              = FALSE
   DEFINE TTY_TERMINAL            = FALSE
@@ -169,6 +170,7 @@
   gArmVirtTokenSpaceGuid.PcdTpm2SupportEnabled|$(TPM2_ENABLE)
 
 [PcdsFixedAtBuild.common]
+  gEfiMdeModulePkgTokenSpaceGuid.PcdMbrLogicalPartitionNumberOffset|$(WINRT_MBR_LOGICAL_OFFSET)
   # AArch32 WinRT uses the ACPI parking protocol instead of PSCI.
   gArmVirtWinRtTokenSpaceGuid.PcdWinRtSecondaryReleaseBase|($(WINRT_RAM_BASE) + 0x60000)
   gArmVirtWinRtTokenSpaceGuid.PcdPlatformEhciBase|0x090e0000

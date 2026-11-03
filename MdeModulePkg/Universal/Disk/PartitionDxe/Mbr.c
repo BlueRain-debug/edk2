@@ -19,6 +19,7 @@ SPDX-License-Identifier: BSD-2-Clause-Patent
 **/
 
 #include "Partition.h"
+#include <Library/PcdLib.h>
 
 /**
   Test to see if the Mbr buffer is a valid MBR.
@@ -304,6 +305,18 @@ PartitionInstallMbrChildHandles (
       }
 
       HdDev.PartitionNumber = ++Index;
+      //
+      // Some early ARM loaders derive the kernel boot-volume ordinal from
+      // this final HD node. Their volume count can include primary data
+      // partitions while excluding the extended container itself. Let the
+      // platform supply that offset; zero retains the original numbering.
+      // Do not change the actual partition offset or parent device path.
+      //
+      if (FixedPcdGet32 (PcdMbrLogicalPartitionNumberOffset) > MAX_UINT32 - HdDev.PartitionNumber) {
+        break;
+      }
+
+      HdDev.PartitionNumber += FixedPcdGet32 (PcdMbrLogicalPartitionNumberOffset);
       HdDev.PartitionStart  = UNPACK_UINT32 (Mbr->Partition[0].StartingLBA) + ExtMbrStartingLba + ParentHdDev.PartitionStart;
       HdDev.PartitionSize   = UNPACK_UINT32 (Mbr->Partition[0].SizeInLBA);
       if ((HdDev.PartitionStart + HdDev.PartitionSize - 1 >= ParentHdDev.PartitionStart + ParentHdDev.PartitionSize) ||

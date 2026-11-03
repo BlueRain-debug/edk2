@@ -1009,6 +1009,14 @@
   gEfiMdeModulePkgTokenSpaceGuid.PcdDxeIplBuildPageTables|TRUE|BOOLEAN|0x0001003c
 
 [PcdsFixedAtBuild]
+  ## Add an offset to MBR logical child numbers in hard drive device paths.<BR>
+  #  Zero retains the extended-partition-local numbering, starting at 1.<BR>
+  #  A platform may account for primary data partitions when its loader derives<BR>
+  #  the kernel boot-volume ordinal from the final hard drive node.<BR>
+  #  Partition offsets, sizes, signatures and nested paths are not changed.<BR>
+  # @Prompt MBR logical partition number offset.
+  gEfiMdeModulePkgTokenSpaceGuid.PcdMbrLogicalPartitionNumberOffset|0|UINT32|0x0001007a
+
   ## Flag of enabling/disabling the feature of Loading Module at Fixed Address.<BR><BR>
   #  0xFFFFFFFFFFFFFFFF: Enable the feature as fixed offset to TOLM.<BR>
   #  0:                  Disable the feature.<BR>
