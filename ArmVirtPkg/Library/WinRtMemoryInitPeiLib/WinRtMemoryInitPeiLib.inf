@@ -28,6 +28,7 @@
   ArmVirtPkg/ArmVirtQemuWinRtPkg.dec
 
 [LibraryClasses]
+  BaseLib
   BaseMemoryLib
   FdtLib
   DebugLib

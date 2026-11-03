@@ -11,6 +11,7 @@
 
 #include <Library/ArmMmuLib.h>
 #include <Library/BaseMemoryLib.h>
+#include <Library/BaseLib.h>
 #include <libfdt.h>
 #include <Library/ArmVirtMemInfoLib.h>
 #include <Library/DebugLib.h>
@@ -219,6 +220,42 @@ MemoryPeim (
   }
 
   BuildWinRtRamHobs (NextBase, SystemMemoryTop - NextBase, ResourceAttributes);
+
+  // The optional MSM8x60 graphics probe uses a native video pool within RAM.
+  // Keep it backed by RAM, but exclude it from PEI/DXE and OS allocations.
+  // The property is a big-endian <64-bit base, 64-bit size> pair supplied only
+  // by the explicitly enabled QEMU probe. Existing platforms are unaffected.
+  {
+    CONST VOID    *Fdt;
+    CONST fdt64_t *Carveout;
+    INT32         PropertySize;
+    UINT64        CarveoutBase;
+    UINT64        CarveoutSize;
+
+    Fdt = (VOID *)(UINTN)PcdGet64 (PcdDeviceTreeInitialBaseAddress);
+    Carveout = (fdt_check_header (Fdt) == 0) ?
+               fdt_getprop (Fdt, 0, "qemu,winrt-qcdx-carveout", &PropertySize) : NULL;
+    if (Carveout != NULL) {
+      if (PropertySize != 2 * sizeof (*Carveout)) {
+        return EFI_COMPROMISED_DATA;
+      }
+
+      CarveoutBase = fdt64_to_cpu (ReadUnaligned64 ((CONST UINT64 *)&Carveout[0]));
+      CarveoutSize = fdt64_to_cpu (ReadUnaligned64 ((CONST UINT64 *)&Carveout[1]));
+      if ((CarveoutBase < PcdGet64 (PcdSystemMemoryBase)) ||
+          (CarveoutBase >= SystemMemoryTop) || (CarveoutSize == 0) ||
+          (CarveoutSize > SystemMemoryTop - CarveoutBase) ||
+          ((CarveoutBase | CarveoutSize) & EFI_PAGE_MASK) != 0 ||
+          ((CarveoutBase < UefiMemoryBase + UefiMemorySize) &&
+           (UefiMemoryBase < CarveoutBase + CarveoutSize))) {
+        return EFI_INVALID_PARAMETER;
+      }
+
+      BuildMemoryAllocationHob (CarveoutBase, CarveoutSize, EfiReservedMemoryType);
+      DEBUG ((DEBUG_INFO, "WinRT: QCDX video pool reserved at 0x%lx size 0x%lx\n",
+              CarveoutBase, CarveoutSize));
+    }
+  }
 
   // Keep the SEC secondary-release words out of the PEI/DXE page allocator.
   BuildMemoryAllocationHob (FixedPcdGet32 (PcdWinRtSecondaryReleaseBase),
